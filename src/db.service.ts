@@ -12,7 +12,7 @@ export class DbService {
           password: process.env.CLUSTER_PASSWORD,
         })
 
-        const res = await pool.query('SELECT 1 as result');
+        const res = await pool.query('SELECT 1 + 1 as result');
         return JSON.stringify(res.rows[0]['result']);
     }
 }

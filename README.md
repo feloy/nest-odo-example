@@ -1,73 +1,89 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo_text.svg" width="320" alt="Nest Logo" /></a>
-</p>
+# Sample NestJS application to use with odo
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This is a sample application using the [NestJS](https://nestjs.com/) framework, and instructions on how to develop the application using [odo](https://github.com/openshift/odo).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The application is an API which, when calls, connects to a PostgreSQL database to make some simple computation and displays the response.
 
-## Description
+## Pre-requisites on OpenShift
+- Install EDB Cloud Native PostgreSQL operator for all projects or for the current project.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Inner loop
 
-## Installation
-
-```bash
-$ npm install
+```
+$ odo project create prj1
 ```
 
-## Running the app
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+Check that the EDB Cloud native PostgreSQL operator is available:
+```
+$ odo catalog list services
+Services available through Operators
+NAME                                CRDs
+cloud-native-postgresql.v1.6.0      Backup, Cluster, ScheduledBackup
+service-binding-operator.v0.8.0     ServiceBinding
 ```
 
-## Test
+Create a nodejs component using the sources in the current directory:
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+```
+$ odo create nodejs api
 ```
 
-## Support
+Create an instance of the PostgreSQL service:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```
+$ odo service create cloud-native-postgresql.v1.6.0/Cluster pg
+$ odo push
+```
 
-## Stay in touch
+Link the PostgreSQL service to the component:
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```
+$ odo link Cluster/pg
+$ odo push
+```
 
-## License
+Call the API:
 
-Nest is [MIT licensed](LICENSE).
+```
+$ odo describe
+Component Name: api
+Type: nodejs
+Environment Variables:
+ · PROJECTS_ROOT=/project
+ · PROJECT_SOURCE=/project
+ · DEBUG_PORT=5858
+URLs:
+ · http://http-3000-app-prj1.apps-crc.testing exposed via 3000
+Linked Services:
+ · Cluster/pg
+   Environment Variables:
+    · CLUSTER_PGPASS
+    · CLUSTER_TLS.CRT
+    · CLUSTER_TLS.KEY
+    · CLUSTER_USERNAME
+    · CLUSTER_CA.CRT
+    · CLUSTER_CA.KEY
+    · CLUSTER_CLUSTERIP
+    · CLUSTER_PASSWORD
+$ curl http://http-3000-app-prj1.apps-crc.testing
+=> 2
+```
+
+Debug configuration for vscode:
+
+```
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to remote 5858",
+            "type": "node",
+            "request": "attach",
+            "address": "localhost",
+            "port": 5858,
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/project"
+        }
+    ]
+}
+```
